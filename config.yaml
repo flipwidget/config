@@ -1,1 +1,144 @@
-## This is going to be a yaml file
+default_config:
+
+http:
+#  server_port: 12345
+#  ssl_certificate: /etc/letsencrypt/live/hass.example.com/fullchain.pem
+#  ssl_key: /etc/letsencrypt/live/hass.example.com/privkey.pem
+#  cors_allowed_origins:
+#    - https://google.com
+#    - https://www.home-assistant.io
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 10.10.10.12
+
+switch:
+  - platform: command_line
+    switches:
+      jeeves_pihole:
+        command_on: curl -X GET 'http://10.10.10.11/admin/api.php?enable&auth=c6af6fe3ff878460ba54e4ff7f22edd6eccf2f1eb90626211baf9b3bf6a916fd'
+        command_off: curl -X GET 'http://10.10.10.11/admin/api.php?disable=3600&auth=c6af6fe3ff878460ba54e4ff7f22edd6eccf2f1eb90626211baf9b3bf6a916fd'
+
+sensor:
+  - platform: command_line
+    name: You Tube Blocking
+    scan_interval: 10
+    command: curl -X GET 'http://10.10.10.11/admin/api.php?status'
+    value_template: >
+      {{ value_json.status }}
+
+timer:
+  you_tube_unblocked_timer:
+    duration: '00:00:00'
+    name: You Tube Unblocked
+    icon: mdi:youtube
+  you_tube_unblocked_timer_0:
+    duration: '00:00:00'
+    name: You Tube Unblocked 0
+    icon: mdi:youtube
+  you_tube_unblocked_timer_30:
+    duration: '00:30:00'
+    name: You Tube Unblocked 30
+    icon: mdi:youtube
+  you_tube_unblocked_timer_60:
+    duration: '00:60:00'
+    name: You Tube Unblocked 60
+    icon: mdi:youtube
+
+
+# Text to speech
+tts:
+  - platform: google_translate
+
+group: !include groups.yaml
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+
+panel_iframe:
+  configurator:
+    title: Configurator
+    icon: mdi:wrench
+    url: http://10.10.30.25:3218
+    
+mqtt:
+  #Front Door Bell    
+  binary_sensor:
+    - name: "Front Door Bell"
+      state_topic: "tele/rf-bridge/RESULT"
+      value_template: '{{value_json.RfRaw.Data}}'
+      payload_on: "AA B1 03 01F4 03D4 0BAE 281818180918091818091809180918090918091818 55"
+      payload_off: "AA B1 03 01F4 03D4 0BAE 281818180918091818091809180918090918091818 55_off"
+      off_delay: 5
+      device_class: motion
+      qos: 1
+
+
+
+
+script:
+  turn_off_outside_lights:
+    sequence:
+        service: mqtt.publish
+        data:
+          topic: cmnd/rf-bridge/backlog
+          payload: >-
+            rfraw AA B0 0F 04 08 0104 0208 03B6 0370 3819192819 55;  rfraw AA B0 25 03
+            08 017C 0302 2530 2809091818180918090918180918180918091809090909180909180918
+            55; rfraw 177;
+  turn_on_outside_lights:
+    sequence:
+        service: mqtt.publish
+        data:
+          topic: cmnd/rf-bridge/backlog
+          payload: >-
+            rfraw AA B0 25 03 08 0186 0316 24C2 2809091818180918090918180918180918091809091809090909180918 55; rfraw 177;
+  turn_off_fountain:
+    sequence:
+        service: mqtt.publish
+        data:
+          topic: cmnd/rf-bridge/backlog
+          payload: >-
+            rfraw AA B0 0D 04 08 015E 00B4 0082 0190 B091A2 55; rfraw AA B0 25 03 08
+            0190 030C 24EA 2809091818180918090918180918180918091809090909091809180918
+            55; rfraw 177;
+  turn_on_fontain:
+    sequence:
+        service: mqtt.publish
+        data:
+          topic: cmnd/rf-bridge/backlog
+          payload: >-
+            rfraw AA B0 25 03 08 019A 0302 24CC 2809091818180918090918180918180918091809090918090909180918 55; rfraw 177;
+
+
+
+input_select: 
+input_boolean:
+input_datetime:
+input_number:
+input_text:
+
+
+
+climate:
+  - platform: generic_thermostat
+    name: Ensuite
+    heater: switch.ensuite_towel_rail
+    target_sensor: sensor.front_door_device_temperature
+    min_temp: 10
+    max_temp: 30
+    target_temp: 18
+    ac_mode: false
+  - platform: generic_thermostat
+    name: Central Heating
+    heater: switch.boiler_heating
+    target_sensor: sensor.hall_temp_temperature
+    min_temp: 10
+    max_temp: 30
+    target_temp: 18
+    ac_mode: false
+    
+    
+device_tracker:
+  - platform: google_maps
+    username: "john.d.jarvis@gmail.com"
